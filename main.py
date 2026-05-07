@@ -178,7 +178,12 @@ def smart_save_to_memory(text: str, user_id: int):
 def delete_memory(search_query: str, user_id: int):
     query_vector = embed_model.encode(search_query).tolist()
     user_filter = Filter(must=[FieldCondition(key="user_id", match=MatchValue(value=user_id))])
-    search_result = q_client.search(collection_name=COLLECTION_NAME, query_vector=query_vector, query_filter=user_filter, limit=1)
+    search_result = q_client.query_points(  # Changed from search
+        collection_name=COLLECTION_NAME,
+        query=query_vector,  # Changed from query_vector
+        query_filter=user_filter,
+        limit=1
+    ).points  # Added .points
     
     if search_result:
         point_id = search_result[0].id
@@ -245,12 +250,12 @@ async def chat(request: ChatRequest):
         all_results = []
         for q in expanded_queries:
             vector = embed_model.encode(q).tolist()
-            search_result = q_client.search(
+            search_result = q_client.query_points(  # Changed from search
                 collection_name=COLLECTION_NAME,
-                query_vector=vector,
+                query=vector,  # Changed from query_vector
                 query_filter=Filter(must=[FieldCondition(key="user_id", match=MatchValue(value=numeric_user_id))]),
                 limit=2
-            )
+            ).points  # Added .points
             all_results.extend([hit.payload["text"] for hit in search_result])
         context = "User Facts: " + " | ".join(list(set(all_results)))
         print(f"Retrieved {len(set(all_results))} facts")
@@ -296,7 +301,7 @@ async def chat(request: ChatRequest):
         }
 @app.get("/api/user-data/{user_id}")
 async def get_user_data(user_id: str):
-    points, _ = q_client.scroll(
+    points, _ = q_client.scroll(  # This one stays as 'scroll' - no change
         collection_name=COLLECTION_NAME,
         scroll_filter=Filter(must=[FieldCondition(key="user_id", match=MatchValue(value=int(user_id)))]),
         with_payload=True
