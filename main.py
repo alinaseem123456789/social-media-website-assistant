@@ -307,7 +307,7 @@ async def get_user_data(user_id: str):
         with_payload=True
     )
     return {"memories": [p.payload.get("text") for p in points]}
-
+#changes
 @app.get("/api/intent-test/{message}")
 async def test_intent(message: str):
     """Test endpoint to check intent classification"""
