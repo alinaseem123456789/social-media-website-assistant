@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+groq
+sentence-transformers
+qdrant-client
+vaderSentiment
+pyspellchecker
+python-dotenv
+numpy
+scikit-learn
+pydantic
+requests
