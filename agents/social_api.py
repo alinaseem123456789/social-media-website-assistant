@@ -1,4 +1,3 @@
-# social_api.py
 from typing import List, Dict, Optional
 from supabase_client import get_supabase_client
 
@@ -37,7 +36,6 @@ class SocialAPI:
     
     def get_friends(self, user_id: int) -> List[Dict]:
         """Get user's friends list"""
-        # Get accepted friendships
         result = self.supabase.table('friendships')\
             .select('friend_id')\
             .eq('user_id', user_id)\
@@ -46,20 +44,14 @@ class SocialAPI:
         
         if not result.data:
             return []
-        
-        friend_ids = [f['friend_id'] for f in result.data]
-        
-        # Get friend details
+        friend_ids = [f['friend_id'] for f in result.data]        
         users_result = self.supabase.table('users')\
             .select('id, username')\
             .in_('id', friend_ids)\
             .execute()
-        
         return users_result.data if users_result.data else []
-    
     def send_friend_request(self, from_user_id: int, to_user_id: int) -> Dict:
         """Send friend request using your existing system"""
-        # Check if request already exists
         existing = self.supabase.table('friendships')\
             .select('*')\
             .eq('user_id', from_user_id)\
@@ -67,9 +59,7 @@ class SocialAPI:
             .execute()
         
         if existing.data:
-            return {'status': 'already_sent', 'friendship_id': existing.data[0]['id']}
-        
-        # Create new friend request
+            return {'status': 'already_sent', 'friendship_id': existing.data[0]['id']}        
         result = self.supabase.table('friendships').insert({
             'user_id': from_user_id,
             'friend_id': to_user_id,

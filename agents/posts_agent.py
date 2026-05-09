@@ -9,23 +9,17 @@ class PostAgent:
         self.pending_action = None  
         
     async def process(self, user_id: int, message: str = None, user_confirmation: str = None, image_url: str = None):
-        """Main entry point for post creation - returns post_suggestion for button"""
-        
-        # Handle approval (when user clicks "Post Now" button)
+        """Main entry point for post creation - returns post_suggestion for button"""        
         if user_confirmation == "approve":
             if self.current_draft:
                 return await self.publish_post(user_id)
             else:
-                return {"final_response": "No draft found. Please create a post first."}
-        
-        # Handle edit request (when user clicks "Edit" button)
+                return {"final_response": "No draft found. Please create a post first."}        
         if user_confirmation == "edit":
             return {
-                "final_response": "✏️ Send me the edited version of your post.",
+                "final_response": " Send me the edited version of your post.",
                 "awaiting_edit": True
-            }
-        
-        # Handle cancellation
+            }        
         if user_confirmation == "cancel":
             self.awaiting_response = False
             self.current_draft = None
@@ -33,19 +27,13 @@ class PostAgent:
             return {
                 "final_response": "Post cancelled. Let me know if you want to create another!",
                 "cancelled": True
-            }
-        
-        # Handle edit content (user provided new text)
+            }        
         if self.awaiting_response and message and len(message) > 3:
-            return await self.regenerate_post(user_id, message)
-        
-        # Handle image upload
+            return await self.regenerate_post(user_id, message)        
         if image_url:
             if self.current_draft:
                 self.current_draft['image_url'] = image_url
-                return await self.present_draft_with_button()
-        
-        # New post request - create draft and show button
+                return await self.present_draft_with_button()        
         if message or user_confirmation:
             return await self.create_post_draft(user_id, message or user_confirmation)
         
@@ -65,29 +53,23 @@ class PostAgent:
         
         Return ONLY the post text with hashtags.
         """
-        
         response = self.llm.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=200
         )
-        
-        full_post = response.choices[0].message.content.strip()
-        
-        # Store draft
+        full_post = response.choices[0].message.content.strip()        
         self.current_draft = {
             "content": full_post,
             "hashtags": self._extract_hashtags(full_post),
             "image_url": None
         }
         self.awaiting_response = True
-        self.pending_action = 'approval'
-        
-        # Return post_suggestion for button, not text response
+        self.pending_action = 'approval'        
         return {
             "final_response": f"I've drafted a post about {topic}:",
-            "post_suggestion": full_post,  # This triggers the button!
+            "post_suggestion": full_post,  
             "draft_content": full_post,
             "hashtags": self.current_draft['hashtags'],
             "awaiting_approval": True

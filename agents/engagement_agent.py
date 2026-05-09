@@ -1,4 +1,3 @@
-# agents/engagement_agent.py
 from typing import Dict, Optional, List
 from agents.engagement_social_api import EngagementSocialAPI
 import re
@@ -16,37 +15,25 @@ class EngagementAgent:
         
     async def process(self, user_id: int, message: str = None, user_confirmation: str = None, 
                       post_id: int = None, comment_text: str = None):
-        """Main entry point for engagement actions"""
-        
-        # Handle like action from button
+        """Main entry point for engagement actions"""        
         if user_confirmation == "like" and post_id:
-            return await self.like_post(user_id, post_id)
-        
-        # Handle comment action
+            return await self.like_post(user_id, post_id)        
         if user_confirmation == "comment" and post_id:
             if comment_text:
                 return await self.add_comment(user_id, post_id, comment_text)
             else:
                 return {
-                    "final_response": "💬 What would you like to comment?",
+                    "final_response": " What would you like to comment?",
                     "awaiting_comment": True,
                     "post_id": post_id
-                }
-        
-        # Handle birthday wishes
+                }        
         if user_confirmation == "wish_birthday" and post_id:
-            return await self.send_birthday_wish(user_id, post_id)
-        
-        # Handle check-in on inactive friends
+            return await self.send_birthday_wish(user_id, post_id)        
         if user_confirmation == "check_in":
-            return await self.suggest_check_in(user_id)
-        
-        # Handle user providing comment text
+            return await self.suggest_check_in(user_id)        
         if self.awaiting_response and message and len(message) > 2:
             if self.pending_action == 'comment':
-                return await self.add_comment(user_id, self.pending_post_id, message)
-        
-        # Main engagement request
+                return await self.add_comment(user_id, self.pending_post_id, message)        
         if message or user_confirmation:
             intent = await self._understand_intent(message or user_confirmation)
             
@@ -97,7 +84,7 @@ class EngagementAgent:
         
         if not suggestions:
             return {
-                "final_response": "🎉 All caught up! No pending engagement suggestions right now.",
+                "final_response": "All caught up! No pending engagement suggestions right now.",
                 "engagement_suggestions": []
             }
         
@@ -113,7 +100,7 @@ class EngagementAgent:
         
         if not birthdays:
             return {
-                "final_response": "🎂 No upcoming birthdays in the next 7 days!",
+                "final_response": "No upcoming birthdays in the next 7 days!",
                 "birthday_suggestions": []
             }
         
@@ -126,7 +113,7 @@ class EngagementAgent:
         
         if not inactive:
             return {
-                "final_response": "🤝 All your friends have been active recently!",
+                "final_response": "All your friends have been active recently!",
                 "inactive_friends": []
             }
         
@@ -139,24 +126,22 @@ class EngagementAgent:
         
         if result['status'] == 'liked':
             return {
-                "final_response": "✅ Liked the post!",
+                "final_response": "Liked the post!",
                 "liked": True
             }
         elif result['status'] == 'already_liked':
             return {
-                "final_response": "❤️ You already liked this post!",
+                "final_response": "You already liked this post!",
                 "already_liked": True
             }
         else:
             return {
-                "final_response": "❌ Failed to like post. Please try again.",
+                "final_response": "Failed to like post. Please try again.",
                 "liked": False
             }
     
     async def add_comment(self, user_id: int, post_id: int, comment_text: str) -> Dict:
-        """Add a comment to a post"""
-        
-        # Generate comment if not provided
+        """Add a comment to a post"""        
         if not comment_text or comment_text.lower() == 'suggest':
             comment_text = await self._generate_comment(post_id)
         
@@ -164,19 +149,17 @@ class EngagementAgent:
         
         if result['status'] == 'commented':
             return {
-                "final_response": f"💬 Comment added: \"{comment_text}\"",
+                "final_response": f"Comment added: \"{comment_text}\"",
                 "commented": True
             }
         else:
             return {
-                "final_response": "❌ Failed to add comment. Please try again.",
+                "final_response": "Failed to add comment. Please try again.",
                 "commented": False
             }
     
     async def _generate_comment(self, post_id: int) -> str:
-        """Generate an appropriate comment using LLM"""
-        
-        # Get post content
+        """Generate an appropriate comment using LLM"""        
         post = self.social_api.supabase.table('posts')\
             .select('content')\
             .eq('post_id', post_id)\
@@ -208,14 +191,11 @@ class EngagementAgent:
         friend = self.social_api.get_user_details(friend_id)
         
         if not friend:
-            return {"final_response": "❌ Could not find friend."}
+            return {"final_response": "Could not find friend."}
         
-        wish = f"Happy Birthday @{friend['username']}! 🎂🎉 Wishing you an amazing day!"
-        
-        # This would integrate with your messaging system
-        # For now, return the wish
+        wish = f"Happy Birthday @{friend['username']}! Wishing you an amazing day!"
         return {
-            "final_response": f"🎂 Birthday wish ready to send:\n\n\"{wish}\"\n\nWant me to send it?",
+            "final_response": f" Birthday wish ready to send:\n\n\"{wish}\"\n\nWant me to send it?",
             "birthday_wish": wish,
             "friend_id": friend_id,
             "awaiting_confirmation": True
@@ -228,7 +208,7 @@ class EngagementAgent:
         
         if not inactive:
             return {
-                "final_response": "✅ All your friends have been active recently!"
+                "final_response": " All your friends have been active recently!"
             }
         
         suggestions = []
@@ -237,22 +217,22 @@ class EngagementAgent:
                 'friend_id': friend['friend_id'],
                 'username': friend['username'],
                 'days_inactive': friend['days_inactive'],
-                'suggested_message': f"Hey! Haven't seen you in a while. Hope you're doing great! 👋"
+                'suggested_message': f"Hey! Haven't seen you in a while. Hope you're doing great! "
             })
         
         return {
-            "final_response": f"📬 Here are some friends you could check in on:",
+            "final_response": f" Here are some friends you could check in on:",
             "check_in_suggestions": suggestions
         }
     
     def _format_suggestions_response(self, suggestions: List[Dict]) -> Dict:
         """Format engagement suggestions with buttons"""
         
-        response_text = f"🎯 **Found {len(suggestions)} posts to engage with:**\n"
+        response_text = f" Found {len(suggestions)} posts to engage with:**\n"
         
         for i, post in enumerate(suggestions, 1):
-            response_text += f"\n{i}. **{post['username']}**: \"{post['content']}...\""
-            response_text += f"\n   💡 {post['reason']}"
+            response_text += f"\n{i}. {post['username']}**: \"{post['content']}...\""
+            response_text += f"\n    {post['reason']}"
         
         return {
             "final_response": response_text,
@@ -264,13 +244,13 @@ class EngagementAgent:
     def _format_birthdays_response(self, birthdays: List[Dict]) -> Dict:
         """Format birthday suggestions"""
         
-        response_text = f"🎂 **Upcoming Birthdays ({len(birthdays)}):**\n"
+        response_text = f" Upcoming Birthdays ({len(birthdays)}):**\n"
         
         for birthday in birthdays:
             if birthday['days_until'] == 0:
-                response_text += f"\n🎉 **{birthday['username']}** - TODAY!"
+                response_text += f"\n {birthday['username']}** - TODAY!"
             else:
-                response_text += f"\n📅 **{birthday['username']}** - in {birthday['days_until']} days ({birthday['birth_date']})"
+                response_text += f"\n {birthday['username']}** - in {birthday['days_until']} days ({birthday['birth_date']})"
         
         return {
             "final_response": response_text,
@@ -280,10 +260,10 @@ class EngagementAgent:
     def _format_inactive_response(self, inactive: List[Dict]) -> Dict:
         """Format inactive friends response"""
         
-        response_text = f"📬 **Friends who've been quiet ({len(inactive)}):**\n"
+        response_text = f" Friends who've been quiet ({len(inactive)}):**\n"
         
         for friend in inactive:
-            response_text += f"\n👤 **{friend['username']}** - {friend['days_inactive']} days since last post"
+            response_text += f"\n {friend['username']}** - {friend['days_inactive']} days since last post"
         
         return {
             "final_response": response_text,

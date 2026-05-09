@@ -1,4 +1,3 @@
-# agents/friends_social_api.py
 from typing import List, Dict, Optional
 from supabase_client import get_supabase_client
 

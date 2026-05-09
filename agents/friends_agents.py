@@ -1,4 +1,3 @@
-# agents/friends_agent.py
 from typing import Dict, Optional, List
 from agents.friends_social_api import FriendsSocialAPI
 import re
@@ -14,53 +13,38 @@ class FriendSuggestionAgent:
         self.awaiting_response = False
         self.pending_action = None
         self.supabase = self.social_api.supabase          
+    
     async def process(self, user_id: int, message: str = None, user_confirmation: str = None, selected_friends: List[int] = None):
-        """Main entry point for friend suggestions - returns suggestions with buttons"""
-        
-        # Handle sending friend requests (when user clicks "Send Request" button)
+        """Main entry point for friend suggestions - returns suggestions with buttons"""        
         if user_confirmation == "send_requests" and selected_friends:
             return await self.send_friend_requests(user_id, selected_friends)
-        
-        # Handle "send to all" action
         if user_confirmation == "send_to_all":
             if self.current_suggestions:
                 all_ids = [f['id'] for f in self.current_suggestions]
-                return await self.send_friend_requests(user_id, all_ids)
-        
-        # Handle "skip" or "cancel"
+                return await self.send_friend_requests(user_id, all_ids)        
         if user_confirmation in ["skip", "cancel", "no", "not now"]:
             self.awaiting_response = False
             self.current_suggestions = None
             return {
                 "final_response": "No problem! I'll suggest friends another time.",
                 "cleared": True
-            }
-        
-        # Handle edit preferences
+            }        
         if user_confirmation == "edit_preferences":
             return {
                 "final_response": "What kind of friends are you looking for? (e.g., 'people who like hiking', 'developers in NYC', 'photography enthusiasts')",
                 "awaiting_preferences": True
-            }
-        
-        # Handle user providing new preferences
+            }        
         if self.awaiting_response and message and len(message) > 5:
-            return await self.find_friends_by_preferences(user_id, message)
-        
-        # Handle friend request from button (message like "approve_friend_123")
+            return await self.find_friends_by_preferences(user_id, message)        
         if message and message.startswith("approve_friend_"):
             friend_id = int(message.split("_")[-1])
-            return await self.send_friend_requests(user_id, [friend_id])
-        
-        # Handle "send to all" from button
+            return await self.send_friend_requests(user_id, [friend_id])        
         if message and message.startswith("send_to_all_"):
             try:
                 friend_ids = json.loads(message.replace("send_to_all_", ""))
                 return await self.send_friend_requests(user_id, friend_ids)
             except:
-                pass
-        
-        # New friend suggestion request
+                pass        
         if message or user_confirmation:
             intent = await self._understand_intent(message or user_confirmation)
             
@@ -152,14 +136,9 @@ class FriendSuggestionAgent:
         
         return self._format_suggestions_response(suggestions)
     
-    # agents/friends_agent.py - Update the _find_potential_friends method
-
     async def _find_potential_friends(self, user_id: int, interests: List[str], exclude_ids: List[int], limit: int = 5) -> List[Dict]:
         """Find potential friends with multiple fallback strategies"""
-        
-        suggestions = []
-        
-        # Strategy 1: Search by interests (if provided)
+        suggestions = []        
         if interests:
             for interest in interests[:3]:
                 result = self.supabase.table('user_profiles')\
@@ -184,9 +163,8 @@ class FriendSuggestionAgent:
                                     'match_interests': [interest]
                                 })
         
-        # Strategy 2: If no interest matches, get users with ANY hobbies
         if not suggestions:
-            print("📊 No interest matches, looking for users with hobbies...")
+            print(" No interest matches, looking for users with hobbies...")
             result = self.supabase.table('user_profiles')\
                 .select('user_id, hobbies, bio, country')\
                 .not_.is_('hobbies', 'null')\
@@ -208,11 +186,9 @@ class FriendSuggestionAgent:
                                 'bio': profile.get('bio', ''),
                                 'location': profile.get('country', ''),
                                 'match_interests': []
-                            })
-        
-        # Strategy 3: If still no suggestions, get recent users (excluding self and existing friends)
+                            })        
         if not suggestions:
-            print("📊 No users with hobbies found, getting recent users...")
+            print(" No users with hobbies found, getting recent users...")
             result = self.supabase.table('users')\
                 .select('id, username, email')\
                 .neq('id', user_id)\
@@ -223,7 +199,6 @@ class FriendSuggestionAgent:
             if result.data:
                 for user in result.data:
                     if user['id'] not in exclude_ids:
-                        # Try to get profile
                         profile_result = self.supabase.table('user_profiles')\
                             .select('hobbies, bio, country')\
                             .eq('user_id', user['id'])\
@@ -240,35 +215,7 @@ class FriendSuggestionAgent:
                             'location': profile.get('country', ''),
                             'match_interests': [],
                             'match_reason': 'New user'
-                        })
-        
-        # Strategy 4: Ultimate fallback - return a demo/mock user for testing
-        if not suggestions:
-            print("📊 No users found at all, returning mock suggestions for testing...")
-            suggestions = [
-                {
-                    'id': 999,
-                    'username': 'demo_user_1',
-                    'email': 'demo1@example.com',
-                    'hobbies': 'hiking, photography',
-                    'bio': 'Love outdoor adventures',
-                    'location': 'New York',
-                    'match_interests': [],
-                    'match_reason': 'Demo user - Please add real users to your database'
-                },
-                {
-                    'id': 998,
-                    'username': 'demo_user_2', 
-                    'email': 'demo2@example.com',
-                    'hobbies': 'cooking, reading',
-                    'bio': 'Food enthusiast',
-                    'location': 'California',
-                    'match_interests': [],
-                    'match_reason': 'Demo user - Please add real users to your database'
-                }
-            ]
-        
-        # Remove duplicates and limit
+                        })        
         seen = set()
         unique_suggestions = []
         for s in suggestions:
@@ -355,23 +302,22 @@ class FriendSuggestionAgent:
                 "friend_suggestions": []
             }
         
-        response_text = f"🎯 **Found {len(suggestions)} people you might know:**"
+        response_text = f"Found {len(suggestions)} people you might know:**"
         
         for i, friend in enumerate(suggestions, 1):
             response_text += f"\n\n{i}. **{friend['username']}**"
             if friend.get('match_reason'):
-                response_text += f"\n   💡 {friend['match_reason']}"
+                response_text += f"\n {friend['match_reason']}"
             if friend.get('location'):
-                response_text += f"\n   📍 {friend['location']}"
+                response_text += f"\n  {friend['location']}"
             if friend.get('hobbies'):
                 hobbies_short = friend['hobbies'][:50] + ('...' if len(friend['hobbies']) > 50 else '')
-                response_text += f"\n   🎨 {hobbies_short}"
+                response_text += f"\n {hobbies_short}"
         
         return {
             "final_response": response_text,
             "friend_suggestions": suggestions,
-            "suggestions_count": len(suggestions),
-            "awaiting_selection": True
+            "suggestions_count": len(suggestions)
         }
     
     async def send_friend_requests(self, user_id: int, friend_ids: List[int]) -> Dict:
@@ -399,7 +345,7 @@ class FriendSuggestionAgent:
             if fail_count > 0:
                 response += f" ({fail_count} failed)"
         else:
-            response = " Could not send friend requests. Please try again."
+            response = "Could not send friend requests. Please try again."
         
         return {
             "final_response": response,

@@ -1,4 +1,3 @@
-# agents/engagement_social_api.py
 from typing import List, Dict, Optional
 from supabase_client import get_supabase_client
 from datetime import datetime, timedelta
@@ -94,7 +93,6 @@ class EngagementSocialAPI:
             }).execute()
             
             if result.data:
-                # Update post total_likes
                 current_post = self.supabase.table('posts')\
                     .select('total_likes')\
                     .eq('post_id', post_id)\
@@ -199,23 +197,18 @@ class EngagementSocialAPI:
     
     def get_upcoming_birthdays(self, user_id: int, days_ahead: int = 7) -> List[Dict]:
         """Get friends with upcoming birthdays"""
-        friends = self.get_friends_list(user_id)
-        
+        friends = self.get_friends_list(user_id)    
         if not friends:
             return []
-        
+    
         birthdays = []
-        today = datetime.now().date()
-        
+        today = datetime.now().date()        
         for friend in friends:
-            # Try to get birth_date from user_profiles
             try:
                 profile = self.supabase.table('user_profiles')\
                     .select('birth_date, age')\
                     .eq('user_id', friend['id'])\
-                    .execute()
-                
-                # Check if birth_date exists
+                    .execute()                
                 if profile.data and profile.data[0].get('birth_date'):
                     birth_date = datetime.strptime(profile.data[0]['birth_date'], '%Y-%m-%d').date()
                     birth_date_this_year = birth_date.replace(year=today.year)
@@ -287,7 +280,6 @@ class EngagementSocialAPI:
         for post in posts:
             liked = self.check_if_liked(user_id, post['post_id'])
             if not liked:
-                # Generate a smart reason
                 if post['total_likes'] == 0:
                     reason = f"No one has liked this yet - be the first!"
                 elif post['total_likes'] < 5:
